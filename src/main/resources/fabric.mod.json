@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "id": "ilnv_09",
+  "version": "${version}",
+  "name": "iLnv_09",
+  "description": "iLnv_09 Client.",
+  "authors": [
+    "ilnv_09"
+  ],
+  "contact": {
+    "sources": "EZ"
+  },
+  "icon": "assets/skybox/icon.png",
+  "accessWidener": "iLnv_09.accesswidener",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "dev.iLnv_09.iLnv_09"
+    ]
+  },
+  "mixins": [
+    "iLnv_09.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.15.0",
+    "minecraft": "1.20.4",
+    "java": ">=17"
+  },
+  "suggests": {
+    "another-mod": "*"
+  }
+}
