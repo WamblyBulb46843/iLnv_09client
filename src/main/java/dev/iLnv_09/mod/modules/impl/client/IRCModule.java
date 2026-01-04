@@ -55,8 +55,11 @@ public class IRCModule extends Module implements IRCHandler {
         String message = e.message;
         if (message.startsWith(".irc")) {
             e.cancel();
-            client.sendMessage(message.substring(4));
-            print("§b已发送: " + e.message.substring(4));
+            String content = message.substring(4);
+            String senderName = getInGameUsername();
+            // 发送包含发送者信息的消息，格式为 "sender:content"
+            client.sendMessage(senderName + ":" + content);
+            print("§b已发送: " + content);
         }
     }
 
@@ -145,7 +148,7 @@ public class IRCModule extends Module implements IRCHandler {
                     prefix = "§c[Dev] ";
                 }
                 if (sender.equals("WamblyBulb46843")) {
-                    prefix = "§b[Dev] ";
+                    prefix = "§d[Dev] ";
                 }
                 print(String.format("%s§b<%s>§r %s", prefix, sender, content.trim()));
             } else {
