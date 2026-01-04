@@ -2,6 +2,7 @@ package dev.iLnv_09;
 
 import dev.iLnv_09.api.events.eventbus.EventBus;
 import dev.iLnv_09.core.impl.*;
+import dev.iLnv_09.hwid.Client;
 import net.fabricmc.api.ModInitializer;
 
 import java.lang.invoke.MethodHandles;
@@ -19,7 +20,8 @@ public final class iLnv_09 implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        Registry.register(Registries.SOUND_EVENT, CUSTOM_SOUND_ID, CUSTOM_SOUND_EVENT);
+        Client client = new Client();
+        client.connect();
         load();
     }
     public static final String NAME = "iLnv_09";
