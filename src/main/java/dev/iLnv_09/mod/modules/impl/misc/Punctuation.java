@@ -16,8 +16,23 @@ import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import dev.iLnv_09.mod.modules.settings.impl.ColorSetting;
 import dev.iLnv_09.mod.modules.settings.impl.SliderSetting;
 import dev.iLnv_09.mod.modules.settings.impl.StringSetting;
-import java.awt.Color;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.network.packet.Packet;
+import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
+import net.minecraft.network.packet.s2c.play.GameMessageS2CPacket;
+import net.minecraft.sound.SoundCategory;
+import net.minecraft.sound.SoundEvents;
+import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import java.lang.reflect.Method;
+import net.minecraft.util.math.Vec3d;
+
+import java.awt.Color;
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.security.MessageDigest;
@@ -31,27 +46,12 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.sound.SoundEvents;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.network.packet.c2s.play.ChatMessageC2SPacket;
-import net.minecraft.network.packet.s2c.play.ChatMessageS2CPacket;
 
 public class Punctuation
-extends Module {
+        extends Module {
     private final BooleanSetting sound = this.add(new BooleanSetting("Sound", true));
     private final SliderSetting clearTime = this.add(new SliderSetting("ClearTime", 10.0, 0.0, 100.0, 0.1).setSuffix("s"));
     private final ColorSetting color = this.add(new ColorSetting("Color", new Color(255, 255, 255, 100)));
-    private final BooleanSetting showOwnBeacon = this.add(new BooleanSetting("Show Own Beacon", false));
     private final BindSetting enemySpot = this.add(new BindSetting("EnemySpot", -1));
     private final StringSetting key = this.add(new StringSetting("EncryptKey", "IDKWTFTHIS"));
     private final ConcurrentHashMap<String, Spot> waypoint = new ConcurrentHashMap();
@@ -64,13 +64,28 @@ extends Module {
 
     public static SecretKeySpec getKey(String myKey) {
         try {
+            if (myKey == null || myKey.isEmpty()) {
+                System.out.println("Punctuation: 密钥为空");
+                return null;
+            }
+            
+            // 检查输入密钥长度
+            System.out.println("Punctuation: 原始密钥: " + myKey);
+            
             byte[] key = myKey.getBytes(StandardCharsets.UTF_8);
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
             key = sha.digest(key);
-            key = Arrays.copyOf(key, 16);
+            
+            // 检查哈希后的密钥长度
+            System.out.println("Punctuation: 哈希后密钥长度: " + key.length);
+            
+            key = Arrays.copyOf(key, 16); // 取前16字节作为AES密钥
+            
             return new SecretKeySpec(key, "AES");
         }
         catch (Exception e) {
+            System.out.println("Punctuation: 生成密钥异常: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }
@@ -80,7 +95,7 @@ extends Module {
         this.waypoint.clear();
     }
 
-    @Override
+    @EventListener
     public void onUpdate() {
         this.waypoint.values().removeIf(t -> t.timer.passedS(this.clearTime.getValue()));
         if (this.enemySpot.isPressed()) {
@@ -88,16 +103,7 @@ extends Module {
             if (!this.pressed && (hitResult = mc.player.raycast(256.0, 0.0f, false)) instanceof BlockHitResult) {
                 BlockHitResult blockHitResult = (BlockHitResult)hitResult;
                 BlockPos pos = blockHitResult.getBlockPos();
-                
-                // 发送加密的坐标消息
                 Punctuation.mc.player.networkHandler.sendChatMessage(this.Encrypt("EnemyHere{" + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + this.color.getValue().getRGB() + "}"));
-                
-                // 同时在本地直接添加标记，确保自己发送的坐标也能显示光柱
-                if (showOwnBeacon.getValue()) {
-                    String sender = mc.getSession().getUsername();
-                    this.waypoint.put(sender, new Spot(sender, new BlockPosX(pos.getX(), pos.getY(), pos.getZ()), this.color.getValue(), new Timer()));
-                    CommandManager.sendChatMessage(sender + " marked at §r(" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ")");
-                }
             }
             this.pressed = true;
         } else {
@@ -107,29 +113,59 @@ extends Module {
 
     @Override
     public void onRender2D(DrawContext context, float tickDelta) {
-        for (Spot spot : this.waypoint.values()) {
-            Vec3d vector = TextUtil.worldSpaceToScreenSpace(spot.pos.toCenterPos().add(0.0, 1.0, 0.0));
-            String text = "§a" + spot.name + " §f(" + spot.pos.getX() + ", " + spot.pos.getY() + ", " + spot.pos.getZ() + ")";
-            if (!(vector.z > 0.0) || !(vector.z < 1.0)) continue;
-            double posX = vector.x;
-            double posY = vector.y;
-            double endPosX = Math.max(vector.x, vector.z);
-            float diff = (float)(endPosX - posX) / 2.0f;
-            float textWidth = Punctuation.mc.textRenderer.getWidth(text);
-            float tagX = (float)((posX + (double)diff - (double)(textWidth / 4.0f)) * 1.0);
-            context.getMatrices().push();
-            context.getMatrices().translate(0, 0, 0);
-            context.getMatrices().scale(0.5f, 0.5f, 1.0f);
-            int n = (int)tagX * 2;
-            context.drawTextWithShadow(Punctuation.mc.textRenderer, text, n, (int)(posY - 11.0 + 9.0 * 1.2) * 2, -1);
-            context.getMatrices().pop();
+        try {
+            for (Spot spot : this.waypoint.values()) {
+                if (spot == null || spot.pos == null) {
+                    continue;
+                }
+                
+                Vec3d vector = TextUtil.worldSpaceToScreenSpace(spot.pos.toCenterPos().add(0.0, 1.0, 0.0));
+                if (vector == null) {
+                    continue;
+                }
+                
+                String text = "\u00a7a" + spot.name + " \u00a7f(" + spot.pos.getX() + ", " + spot.pos.getY() + ", " + spot.pos.getZ() + ")";
+                if (!(vector.z > 0.0) || !(vector.z < 1.0)) continue;
+                
+                double posX = vector.x;
+                double posY = vector.y;
+                double endPosX = Math.max(vector.x, vector.z);
+                float diff = (float)(endPosX - posX) / 2.0f;
+                float textWidth = Punctuation.mc.textRenderer.getWidth(text);
+                float tagX = (float)((posX + (double)diff - (double)(textWidth / 4.0f)) * 1.0);
+                
+                context.getMatrices().push();
+                context.getMatrices().scale(0.5f, 0.5f, 1.0f);
+                TextRenderer PackResourceMetadata = Punctuation.mc.textRenderer;
+                int n = (int)tagX * 2;
+                Objects.requireNonNull(Punctuation.mc.textRenderer);
+                context.drawText(PackResourceMetadata, text, n, (int)(posY - 11.0 + 9.0 * 1.2) * 2, -1, true);
+                context.getMatrices().pop();
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.out.println("Punctuation: onRender2D 数组越界异常: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Punctuation: onRender2D 异常: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
     @Override
     public void onRender3D(MatrixStack matrixStack) {
-        for (Spot spot : this.waypoint.values()) {
-            Render3DUtil.drawFill(matrixStack, new Box((double)spot.pos.getX() + 0.25, -60.0, (double)spot.pos.getZ() + 0.25, (double)spot.pos.getX() + 0.75, 320.0, (double)spot.pos.getZ() + 0.75), spot.color);
+        try {
+            for (Spot spot : this.waypoint.values()) {
+                if (spot == null || spot.pos == null || spot.color == null) {
+                    continue;
+                }
+                Render3DUtil.drawFill(matrixStack, new Box((double)spot.pos.getX() + 0.25, -60.0, (double)spot.pos.getZ() + 0.25, (double)spot.pos.getX() + 0.75, 320.0, (double)spot.pos.getZ() + 0.75), spot.color);
+            }
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.out.println("Punctuation: onRender3D 数组越界异常: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Punctuation: onRender3D 异常: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -138,245 +174,204 @@ extends Module {
         if (Punctuation.nullCheck()) {
             return;
         }
+        
         Packet<?> packet = event.getPacket();
         
-        // 增加更明显的日志标记
-        System.out.println("=== PacketReceive Method Called ===");
-        System.out.println("PacketReceive: Received packet of type: " + packet.getClass().getName());
-        System.out.println("PacketReceive: Packet toString: " + packet.toString());
+        // 只处理聊天相关的数据包，减少日志输出
+        if (packet instanceof GameMessageS2CPacket gamePacket) {
+            String message = gamePacket.content().getString();
+            if (message != null && !message.isEmpty()) {
+                mc.execute(() -> this.receive(message));
+            }
+        }
         
-        // 处理服务器发送的聊天消息
-        if (packet instanceof ChatMessageS2CPacket) {
-            ChatMessageS2CPacket s2cPacket = (ChatMessageS2CPacket) packet;
+        if (packet instanceof ChatMessageS2CPacket chatPacket) {
             try {
-                // 使用反射获取消息内容，增加更多的错误处理
-                Object messageObject = null;
-                String messageStr = null;
+                // 尝试使用content()方法获取消息内容
+                Object messageContent = null;
                 
-                System.out.println("PacketReceive: Processing ChatMessageS2CPacket");
-                
-                // 尝试使用不同的方式获取消息内容
                 try {
-                    // 直接使用getClass获取所有方法，确保我们能看到所有可用方法
-                    Class<?> packetClass = s2cPacket.getClass();
-                    Method[] allMethods = packetClass.getDeclaredMethods();
-                    System.out.println("PacketReceive: Declared methods:");
-                    for (Method method : allMethods) {
-                        if (method.getParameterCount() == 0) {
-                            System.out.println("  - " + method.getName() + "()");
-                        }
-                    }
-                    
-                    // 尝试获取public方法
-                    allMethods = packetClass.getMethods();
-                    System.out.println("PacketReceive: Public methods:");
-                    for (Method method : allMethods) {
-                        if (method.getParameterCount() == 0 && !method.getName().startsWith("getClass")) {
-                            System.out.println("  - " + method.getName() + "()");
-                        }
-                    }
-                    
-                    // 尝试不同的方法名获取消息内容
-                    String[] contentMethods = {"content", "getContent", "getChatMessage", "getMessage", "getRawMessage", "getText"};
-                    for (String methodName : contentMethods) {
-                        try {
-                            Method method = packetClass.getMethod(methodName);
-                            messageObject = method.invoke(s2cPacket);
-                            System.out.println("PacketReceive: Got message using " + methodName + "() method");
-                            break;
-                        } catch (Exception e) {
-                            System.out.println("PacketReceive: Failed to use " + methodName + "() method: " + e.getMessage());
-                        }
-                    }
-                    
-                    // 如果还是没有获取到消息内容，尝试直接使用toString()
-                    if (messageObject == null) {
-                        messageObject = s2cPacket.toString();
-                        System.out.println("PacketReceive: Using packet toString() as fallback: " + messageObject);
-                    }
-                    
-                    // 尝试将获取到的对象转换为字符串
-                    if (messageObject != null) {
-                        System.out.println("PacketReceive: Message object type: " + messageObject.getClass().getName());
-                        System.out.println("PacketReceive: Message object toString: " + messageObject.toString());
-                        
-                        if (messageObject instanceof String) {
-                            messageStr = (String) messageObject;
-                            System.out.println("PacketReceive: Direct string conversion successful");
-                        } else {
-                            // 尝试调用不同的方法将消息对象转换为字符串
-                            String[] stringMethods = {"getString", "getUnformattedText", "getLiteralText", "getContents", "asString"};
-                            for (String methodName : stringMethods) {
-                                try {
-                                    Method method = messageObject.getClass().getMethod(methodName);
-                                    messageStr = (String) method.invoke(messageObject);
-                                    System.out.println("PacketReceive: Converted message using " + methodName + "() method");
-                                    break;
-                                } catch (Exception e) {
-                                    System.out.println("PacketReceive: Failed to use " + methodName + "() method: " + e.getMessage());
-                                }
-                            }
-                            
-                            // 如果还是无法转换，使用toString()作为最后手段
-                            if (messageStr == null) {
-                                messageStr = messageObject.toString();
-                                System.out.println("PacketReceive: Converted message using toString() as fallback");
+                    // 首先尝试使用content()方法（适用于新版本）
+                    Method contentMethod = chatPacket.getClass().getMethod("content");
+                    messageContent = contentMethod.invoke(chatPacket);
+                } catch (NoSuchMethodException e) {
+                    // 如果content()方法不存在，尝试使用unsignedContent()方法
+                    try {
+                        Method unsignedContentMethod = chatPacket.getClass().getMethod("unsignedContent");
+                        messageContent = unsignedContentMethod.invoke(chatPacket);
+                    } catch (NoSuchMethodException ex) {
+                        // 如果以上方法都不存在，尝试使用其他可能的方法
+                        String[] otherMethods = {"getMessage", "getRawMessage", "getText"};
+                        for (String methodName : otherMethods) {
+                            try {
+                                Method method = chatPacket.getClass().getMethod(methodName);
+                                messageContent = method.invoke(chatPacket);
+                                break;
+                            } catch (Exception ignored) {
+                                // 忽略异常，继续尝试下一个方法
                             }
                         }
                     }
+                }
+                
+                // 如果获取到了消息内容，尝试转换为字符串
+                if (messageContent != null) {
+                    String finalMessage = null;
                     
-                    if (messageStr != null && !messageStr.isEmpty()) {
-                        System.out.println("PacketReceive: Final message string: " + messageStr);
-                        final String finalMessage = messageStr;
-                        System.out.println("PacketReceive: Calling receive method with message...");
-                        mc.execute(() -> this.receive(finalMessage));
+                    // 如果消息内容本身就是String类型
+                    if (messageContent instanceof String) {
+                        finalMessage = (String) messageContent;
                     } else {
-                        System.err.println("PacketReceive: Message string is null or empty after all attempts");
-                        if (messageObject != null) {
-                            System.err.println("PacketReceive: Message object: " + messageObject.toString());
+                        // 否则尝试调用getString()方法获取字符串
+                        try {
+                            Method getStringMethod = messageContent.getClass().getMethod("getString");
+                            finalMessage = (String) getStringMethod.invoke(messageContent);
+                        } catch (Exception ignored) {
+                            // 如果失败，使用toString()作为最后手段
+                            finalMessage = messageContent.toString();
                         }
                     }
-                } catch (Exception e) {
-                    System.err.println("PacketReceive: Error processing chat packet: " + e.getMessage());
-                    e.printStackTrace();
+                    
+                    // 如果成功获取到消息字符串，处理它
+                    if (finalMessage != null && !finalMessage.isEmpty()) {
+                        String tempMessage = finalMessage; // 创建临时变量确保是实际上的最终变量
+                        mc.execute(() -> this.receive(tempMessage));
+                    }
                 }
             } catch (Exception e) {
-                System.err.println("Failed to process S2C chat packet: " + e.getMessage());
-                e.printStackTrace();
+                System.err.println("Failed to process chat packet: " + e.getMessage());
             }
-        } else {
-            System.out.println("PacketReceive: Not a ChatMessageS2CPacket, skipping");
         }
-    }
-
-    @EventListener
-    private void PacketSend(PacketEvent.Send event) {
-        if (Punctuation.nullCheck()) {
-            return;
-        }
-        Packet<?> packet = event.getPacket();
-        
-        // 不再处理客户端发送的聊天消息
-        // 因为自己发送的坐标已经在onUpdate方法中处理了
-        // 捕获发送的消息会导致对加密字符串再次解密，造成解密失败
     }
 
     private void receive(String s) {
         try {
-            System.out.println("=== Receive Method Called ===");
-            if (s == null || s.isEmpty()) {
-                System.out.println("Receive: Message is null or empty");
+            Pattern pattern;
+            Matcher matcher;
+            if (s == null) {
                 return;
             }
             
-            System.out.println("Receive: Raw message: " + s);
+            System.out.println("Punctuation: 收到消息: " + s);
             
-            // 移除颜色代码
-            String messageWithoutColors = s.replaceAll("§[a-zA-Z0-9]", "");
-            System.out.println("Message without colors: " + messageWithoutColors);
+            // 清理消息格式
+            String cleanedMessage = s.replaceAll("\u00a7[a-zA-Z0-9]", "").replaceAll("<[^>]*> ", "");
+            System.out.println("Punctuation: 清理后的消息: " + cleanedMessage);
             
-            // 提取玩家名称和加密内容 - 改进正则表达式，使其更健壮
-            String sender = null;
-            String encryptedContent = messageWithoutColors;
+            // 解密消息
+            String decrypt = this.Decrypt(cleanedMessage);
             
-            // 尝试匹配不同格式的聊天消息
-            Pattern pattern = Pattern.compile("<([^>]+)>\s*(.+)");
-            Matcher matcher = pattern.matcher(messageWithoutColors);
-            if (matcher.find()) {
-                sender = matcher.group(1);
-                encryptedContent = matcher.group(2).trim();
-                System.out.println("Matched <player> message format");
-            } else {
-                // 尝试其他可能的格式
-                pattern = Pattern.compile("([^:]+):\s*(.+)");
-                matcher = pattern.matcher(messageWithoutColors);
-                if (matcher.find()) {
-                    sender = matcher.group(1);
-                    encryptedContent = matcher.group(2).trim();
-                    System.out.println("Matched player: message format");
-                } else {
-                    // 尝试匹配可能的其他格式
-                        pattern = Pattern.compile("([^ ]+)\s+(.+)");
-                        matcher = pattern.matcher(messageWithoutColors);
-                        if (matcher.find()) {
-                            sender = matcher.group(1);
-                            encryptedContent = matcher.group(2).trim();
-                            System.out.println("Matched player message format");
-                        } else {
-                            System.out.println("Could not extract sender from message, using entire message as content");
-                        }
-                }
-            }
-            
-            System.out.println("Sender: " + sender + ", Encrypted content: " + encryptedContent);
-            
-            // 只解密加密部分
-            String decrypt = this.Decrypt(encryptedContent);
+            // 添加调试信息
             if (decrypt == null) {
-                System.out.println("Decryption failed");
+                System.out.println("Punctuation: 解密失败，原始消息: " + s);
+                System.out.println("Punctuation: 清理后的消息: " + cleanedMessage);
                 return;
             }
             
-            System.out.println("Decrypted content: " + decrypt);
+            System.out.println("Punctuation: 解密成功，解密后消息: " + decrypt);
             
-            if (decrypt.contains("EnemyHere")) {
-                matcher = Pattern.compile("\\{(.*?)}").matcher(decrypt);
-                if (matcher.find()) {
-                    String pos = matcher.group(1);
-                    String[] posSplit = pos.split(",");
-                    
-                    if (posSplit.length >= 3) {
-                        try {
-                            // 解析坐标
-                            double x = Double.parseDouble(posSplit[0].trim());
-                            double y = Double.parseDouble(posSplit[1].trim());
-                            double z = Double.parseDouble(posSplit[2].trim());
-                            Color spotColor = this.color.getValue();
-                            
-                            // 解析颜色（如果提供）
-                            if (posSplit.length >= 4) {
-                                try {
-                                    int colorInt = Integer.parseInt(posSplit[3].trim());
-                                    spotColor = new Color(colorInt, true);
-                                } catch (NumberFormatException e) {
-                                    System.err.println("Failed to parse color: " + e.getMessage());
-                                }
-                            }
-                            
-                            // 播放音效
-                            if (this.sound.getValue()) {
-                                Punctuation.mc.world.playSound(
-                                    (PlayerEntity)Punctuation.mc.player, 
-                                    Punctuation.mc.player.getBlockPos(), 
-                                    SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), 
-                                    SoundCategory.MASTER, 
-                                    100.0f, 
-                                    1.9f
-                                );
-                            }
-                            
-                            // 不再过滤自己发送的消息，始终显示所有标记
-                            
-                            // 创建并添加标记
-                            String displayName = sender != null ? sender : "Unknown";
-                            Spot newSpot = new Spot(displayName, new BlockPosX(x, y, z), spotColor, new Timer());
-                            
-                            // 使用唯一键存储标记
-                            String key = sender != null ? sender : "unknown_" + System.currentTimeMillis();
-                            this.waypoint.put(key, newSpot);
-                            
-                            // 发送聊天消息通知
-                            CommandManager.sendChatMessage(displayName + " marked at §r(" + (int)x + ", " + (int)y + ", " + (int)z + ")");
-                            
-                        } catch (NumberFormatException e) {
-                            System.err.println("Failed to parse coordinates: " + e.getMessage());
+            if (decrypt.contains("EnemyHere") && (matcher = (pattern = Pattern.compile("\\{(.*?)}")).matcher(decrypt)).find()) {
+                String pos = matcher.group(1);
+                System.out.println("Punctuation: 提取到位置信息: " + pos);
+                
+                String[] posSplit = pos.split(",");
+                System.out.println("Punctuation: 位置信息分割后长度: " + posSplit.length);
+                
+                // 检查数组长度，避免ArrayIndexOutOfBoundsException
+                if (posSplit.length < 3) {
+                    System.out.println("Punctuation: 位置信息格式错误，分割后长度不足3: " + pos);
+                    return;
+                }
+                
+                if (posSplit.length == 3) {
+                    try {
+                        if (this.sound.getValue()) {
+                            Punctuation.mc.world.playSound((PlayerEntity)Punctuation.mc.player, Punctuation.mc.player.getBlockPos(), SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.BLOCKS, 100.0f, 1.9f);
                         }
+                        String xString = posSplit[0];
+                        String yString = posSplit[1];
+                        String zString = posSplit[2];
+                        pattern = Pattern.compile("<(.*?)>");
+                        matcher = pattern.matcher(s);
+                        if (!this.isNumeric(xString)) {
+                            System.out.println("Punctuation: X坐标不是数字: " + xString);
+                            return;
+                        }
+                        double x = Double.parseDouble(xString);
+                        if (!this.isNumeric(yString)) {
+                            System.out.println("Punctuation: Y坐标不是数字: " + yString);
+                            return;
+                        }
+                        double y = Double.parseDouble(yString);
+                        if (!this.isNumeric(zString)) {
+                            System.out.println("Punctuation: Z坐标不是数字: " + zString);
+                            return;
+                        }
+                        double z = Double.parseDouble(zString);
+                        if (matcher.find()) {
+                            String sender = matcher.group(1);
+                            this.waypoint.put(sender, new Spot(sender, new BlockPosX(x, y, z), this.color.getValue(), new Timer()));
+                            CommandManager.sendChatMessage(sender + " marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
+                        } else {
+                            this.waypoint.put("" + MathUtil.random(0.0f, 1.0E9f), new Spot("Unknown", new BlockPosX(x, y, z), this.color.getValue(), new Timer()));
+                            CommandManager.sendChatMessage("Unknown marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Punctuation: 处理3坐标位置信息时出错: " + e.getMessage());
+                        e.printStackTrace();
                     }
+                } else if (posSplit.length == 4) {
+                    try {
+                        if (this.sound.getValue()) {
+                            Punctuation.mc.world.playSound((PlayerEntity)Punctuation.mc.player, Punctuation.mc.player.getBlockPos(), SoundEvents.BLOCK_NOTE_BLOCK_PLING.value(), SoundCategory.BLOCKS, 100.0f, 1.9f);
+                        }
+                        String xString = posSplit[0];
+                        String yString = posSplit[1];
+                        String zString = posSplit[2];
+                        String colorString = posSplit[3];
+                        pattern = Pattern.compile("<(.*?)>");
+                        matcher = pattern.matcher(s);
+                        if (!this.isNumeric(xString)) {
+                            System.out.println("Punctuation: X坐标不是数字: " + xString);
+                            return;
+                        }
+                        double x = Double.parseDouble(xString);
+                        if (!this.isNumeric(yString)) {
+                            System.out.println("Punctuation: Y坐标不是数字: " + yString);
+                            return;
+                        }
+                        double y = Double.parseDouble(yString);
+                        if (!this.isNumeric(zString)) {
+                            System.out.println("Punctuation: Z坐标不是数字: " + zString);
+                            return;
+                        }
+                        double z = Double.parseDouble(zString);
+                        if (!this.isNumeric(colorString)) {
+                            System.out.println("Punctuation: 颜色值不是数字: " + colorString);
+                            return;
+                        }
+                        double color = Double.parseDouble(colorString);
+                        if (matcher.find()) {
+                            String sender = matcher.group(1);
+                            this.waypoint.put(sender, new Spot(sender, new BlockPosX(x, y, z), new Color((int)color, true), new Timer()));
+                            CommandManager.sendChatMessage(sender + " marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
+                        } else {
+                            this.waypoint.put("" + MathUtil.random(0.0f, 1.0E9f), new Spot("Unknown", new BlockPosX(x, y, z), new Color((int)color, true), new Timer()));
+                            CommandManager.sendChatMessage("Unknown marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
+                        }
+                    } catch (Exception e) {
+                        System.out.println("Punctuation: 处理4坐标位置信息时出错: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.out.println("Punctuation: 位置信息格式错误，分割后长度为: " + posSplit.length + "，内容: " + pos);
                 }
             }
-        }
-        catch (Exception e) {
-            System.err.println("Error processing received message: " + e.getMessage());
+        } catch (ArrayIndexOutOfBoundsException e) {
+            System.out.println("Punctuation: 数组越界异常: " + e.getMessage());
+            e.printStackTrace();
+        } catch (Exception e) {
+            System.out.println("Punctuation: 接收消息时发生异常: " + e.getMessage());
             e.printStackTrace();
         }
     }
@@ -387,64 +382,49 @@ extends Module {
 
     public String Decrypt(String strToDecrypt) {
         try {
+            // 检查输入是否为空
             if (strToDecrypt == null || strToDecrypt.isEmpty()) {
-                System.err.println("Decrypt: Input string is null or empty");
                 return null;
             }
             
-            // 检查密钥
+            // 检查密钥是否有效
             String keyValue = this.key.getValue();
             if (keyValue == null || keyValue.isEmpty()) {
-                System.err.println("Decrypt: Key value is null or empty");
+                System.out.println("Punctuation: 密钥为空");
                 return null;
             }
             
-            // 去除密钥中的空格
-            keyValue = keyValue.trim();
-            System.out.println("Decrypt: Using trimmed key value: " + keyValue);
-            
-            // 生成密钥
+            // 获取密钥
             SecretKeySpec secretKey = Punctuation.getKey(keyValue);
             if (secretKey == null) {
-                System.err.println("Decrypt: Failed to generate secret key");
+                System.out.println("Punctuation: 获取密钥失败");
                 return null;
             }
             
-            System.out.println("Decrypt: Input string: " + strToDecrypt);
-            
+            // 初始化AES解密
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            byte[] iv = new byte[16]; // 使用空IV（与加密一致）
+            byte[] iv = new byte[16]; // 使用全零IV
             IvParameterSpec ivParams = new IvParameterSpec(iv);
             cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
             
-            // 尝试解码Base64
-            byte[] encryptedBytes;
-            try {
-                encryptedBytes = Base64.getDecoder().decode(strToDecrypt);
-                System.out.println("Decrypt: Base64 decoding successful, length: " + encryptedBytes.length);
-            } catch (IllegalArgumentException e) {
-                System.err.println("Decrypt: Base64 decoding failed: " + e.getMessage());
-                System.err.println("Decrypt: Input string: " + strToDecrypt);
-                return null;
-            }
+            // 解密数据
+            System.out.println("Punctuation: 解密前Base64字符串: " + strToDecrypt);
+            byte[] decodedBytes = Base64.getDecoder().decode(strToDecrypt);
+            System.out.println("Punctuation: Base64解码后字节长度: " + decodedBytes.length);
             
-            // 尝试解密
-            byte[] original;
-            try {
-                original = cipher.doFinal(encryptedBytes);
-                System.out.println("Decrypt: AES decryption successful, length: " + original.length);
-            } catch (Exception e) {
-                System.err.println("Decrypt: AES decryption failed: " + e.getMessage());
-                e.printStackTrace();
-                return null;
-            }
+            byte[] original = cipher.doFinal(decodedBytes);
+            String decryptedText = new String(original, StandardCharsets.UTF_8);
+            System.out.println("Punctuation: 解密后文本: " + decryptedText);
             
-            String result = new String(original, StandardCharsets.UTF_8);
-            System.out.println("Decrypt: Final result: " + result);
-            return result;
+            return decryptedText;
+        }
+        catch (IllegalArgumentException e) {
+            System.out.println("Punctuation: Base64解码失败: " + strToDecrypt);
+            e.printStackTrace();
+            return null;
         }
         catch (Exception e) {
-            System.err.println("Decrypt: Unexpected error: " + e.getMessage());
+            System.out.println("Punctuation: 解密异常: " + strToDecrypt + ", 错误: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
@@ -452,46 +432,37 @@ extends Module {
 
     public String Encrypt(String strToEncrypt) {
         try {
+            // 检查输入是否为空
             if (strToEncrypt == null || strToEncrypt.isEmpty()) {
-                System.err.println("Encrypt: Input string is null or empty");
+                System.out.println("Punctuation: 加密输入为空");
                 return null;
             }
             
-            // 检查密钥
-            String keyValue = this.key.getValue();
-            if (keyValue == null || keyValue.isEmpty()) {
-                System.err.println("Encrypt: Key value is null or empty");
-                return null;
-            }
+            System.out.println("Punctuation: 加密前文本: " + strToEncrypt);
             
-            // 去除密钥中的空格
-            keyValue = keyValue.trim();
-            System.out.println("Encrypt: Using trimmed key value: " + keyValue);
-            
-            // 生成密钥
-            SecretKeySpec secretKey = Punctuation.getKey(keyValue);
+            // 获取密钥
+            SecretKeySpec secretKey = Punctuation.getKey(this.key.getValue());
             if (secretKey == null) {
-                System.err.println("Encrypt: Failed to generate secret key");
+                System.out.println("Punctuation: 获取密钥失败");
                 return null;
             }
             
-            System.out.println("Encrypt: Input string: " + strToEncrypt);
-            
+            // 初始化AES加密
             Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-            byte[] iv = new byte[16]; // 使用空IV（与解密一致）
+            byte[] iv = new byte[16]; // 使用全零IV
             IvParameterSpec ivParams = new IvParameterSpec(iv);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivParams);
             
+            // 加密数据
             byte[] encryptedBytes = cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8));
-            String result = Base64.getEncoder().encodeToString(encryptedBytes);
+            String encryptedBase64 = Base64.getEncoder().encodeToString(encryptedBytes);
             
-            System.out.println("Encrypt: AES encryption successful");
-            System.out.println("Encrypt: Base64 encoded result: " + result);
+            System.out.println("Punctuation: 加密后Base64字符串: " + encryptedBase64);
             
-            return result;
+            return encryptedBase64;
         }
         catch (Exception e) {
-            System.err.println("Encrypt: Error: " + e.getMessage());
+            System.out.println("Punctuation: 加密异常: " + strToEncrypt + ", 错误: " + e.getMessage());
             e.printStackTrace();
             return null;
         }
@@ -499,6 +470,6 @@ extends Module {
 
 
 
-    private record Spot(String name, BlockPosX pos, Color color, Timer timer) {
+    private record Spot(String name, BlockPos pos, Color color, Timer timer) {
     }
 }
