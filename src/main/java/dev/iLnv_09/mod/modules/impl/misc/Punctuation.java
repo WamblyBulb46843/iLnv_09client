@@ -65,27 +65,18 @@ public class Punctuation
     public static SecretKeySpec getKey(String myKey) {
         try {
             if (myKey == null || myKey.isEmpty()) {
-                System.out.println("Punctuation: 密钥为空");
                 return null;
             }
-            
-            // 检查输入密钥长度
-            System.out.println("Punctuation: 原始密钥: " + myKey);
             
             byte[] key = myKey.getBytes(StandardCharsets.UTF_8);
             MessageDigest sha = MessageDigest.getInstance("SHA-256");
             key = sha.digest(key);
-            
-            // 检查哈希后的密钥长度
-            System.out.println("Punctuation: 哈希后密钥长度: " + key.length);
             
             key = Arrays.copyOf(key, 16); // 取前16字节作为AES密钥
             
             return new SecretKeySpec(key, "AES");
         }
         catch (Exception e) {
-            System.out.println("Punctuation: 生成密钥异常: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -143,11 +134,9 @@ public class Punctuation
                 context.getMatrices().pop();
             }
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("Punctuation: onRender2D 数组越界异常: " + e.getMessage());
-            e.printStackTrace();
+            // 2D渲染数组越界异常处理
         } catch (Exception e) {
-            System.out.println("Punctuation: onRender2D 异常: " + e.getMessage());
-            e.printStackTrace();
+            // 2D渲染异常处理
         }
     }
 
@@ -161,11 +150,9 @@ public class Punctuation
                 Render3DUtil.drawFill(matrixStack, new Box((double)spot.pos.getX() + 0.25, -60.0, (double)spot.pos.getZ() + 0.25, (double)spot.pos.getX() + 0.75, 320.0, (double)spot.pos.getZ() + 0.75), spot.color);
             }
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("Punctuation: onRender3D 数组越界异常: " + e.getMessage());
-            e.printStackTrace();
+            // 3D渲染数组越界异常处理
         } catch (Exception e) {
-            System.out.println("Punctuation: onRender3D 异常: " + e.getMessage());
-            e.printStackTrace();
+            // 3D渲染异常处理
         }
     }
 
@@ -239,7 +226,7 @@ public class Punctuation
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Failed to process chat packet: " + e.getMessage());
+                // 处理聊天数据包异常
             }
         }
     }
@@ -252,34 +239,23 @@ public class Punctuation
                 return;
             }
             
-            System.out.println("Punctuation: 收到消息: " + s);
-            
             // 清理消息格式
             String cleanedMessage = s.replaceAll("\u00a7[a-zA-Z0-9]", "").replaceAll("<[^>]*> ", "");
-            System.out.println("Punctuation: 清理后的消息: " + cleanedMessage);
             
             // 解密消息
             String decrypt = this.Decrypt(cleanedMessage);
             
-            // 添加调试信息
             if (decrypt == null) {
-                System.out.println("Punctuation: 解密失败，原始消息: " + s);
-                System.out.println("Punctuation: 清理后的消息: " + cleanedMessage);
                 return;
             }
             
-            System.out.println("Punctuation: 解密成功，解密后消息: " + decrypt);
-            
             if (decrypt.contains("EnemyHere") && (matcher = (pattern = Pattern.compile("\\{(.*?)}")).matcher(decrypt)).find()) {
                 String pos = matcher.group(1);
-                System.out.println("Punctuation: 提取到位置信息: " + pos);
                 
                 String[] posSplit = pos.split(",");
-                System.out.println("Punctuation: 位置信息分割后长度: " + posSplit.length);
                 
                 // 检查数组长度，避免ArrayIndexOutOfBoundsException
                 if (posSplit.length < 3) {
-                    System.out.println("Punctuation: 位置信息格式错误，分割后长度不足3: " + pos);
                     return;
                 }
                 
@@ -294,17 +270,14 @@ public class Punctuation
                         pattern = Pattern.compile("<(.*?)>");
                         matcher = pattern.matcher(s);
                         if (!this.isNumeric(xString)) {
-                            System.out.println("Punctuation: X坐标不是数字: " + xString);
                             return;
                         }
                         double x = Double.parseDouble(xString);
                         if (!this.isNumeric(yString)) {
-                            System.out.println("Punctuation: Y坐标不是数字: " + yString);
                             return;
                         }
                         double y = Double.parseDouble(yString);
                         if (!this.isNumeric(zString)) {
-                            System.out.println("Punctuation: Z坐标不是数字: " + zString);
                             return;
                         }
                         double z = Double.parseDouble(zString);
@@ -317,8 +290,7 @@ public class Punctuation
                             CommandManager.sendChatMessage("Unknown marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
                         }
                     } catch (Exception e) {
-                        System.out.println("Punctuation: 处理3坐标位置信息时出错: " + e.getMessage());
-                        e.printStackTrace();
+                        // 处理异常
                     }
                 } else if (posSplit.length == 4) {
                     try {
@@ -332,22 +304,18 @@ public class Punctuation
                         pattern = Pattern.compile("<(.*?)>");
                         matcher = pattern.matcher(s);
                         if (!this.isNumeric(xString)) {
-                            System.out.println("Punctuation: X坐标不是数字: " + xString);
                             return;
                         }
                         double x = Double.parseDouble(xString);
                         if (!this.isNumeric(yString)) {
-                            System.out.println("Punctuation: Y坐标不是数字: " + yString);
                             return;
                         }
                         double y = Double.parseDouble(yString);
                         if (!this.isNumeric(zString)) {
-                            System.out.println("Punctuation: Z坐标不是数字: " + zString);
                             return;
                         }
                         double z = Double.parseDouble(zString);
                         if (!this.isNumeric(colorString)) {
-                            System.out.println("Punctuation: 颜色值不是数字: " + colorString);
                             return;
                         }
                         double color = Double.parseDouble(colorString);
@@ -360,19 +328,16 @@ public class Punctuation
                             CommandManager.sendChatMessage("Unknown marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
                         }
                     } catch (Exception e) {
-                        System.out.println("Punctuation: 处理4坐标位置信息时出错: " + e.getMessage());
-                        e.printStackTrace();
+                        // 处理异常
                     }
                 } else {
-                    System.out.println("Punctuation: 位置信息格式错误，分割后长度为: " + posSplit.length + "，内容: " + pos);
+                    // 位置信息格式错误
                 }
             }
         } catch (ArrayIndexOutOfBoundsException e) {
-            System.out.println("Punctuation: 数组越界异常: " + e.getMessage());
-            e.printStackTrace();
+            // 数组越界异常处理
         } catch (Exception e) {
-            System.out.println("Punctuation: 接收消息时发生异常: " + e.getMessage());
-            e.printStackTrace();
+            // 接收消息异常处理
         }
     }
 
@@ -390,14 +355,12 @@ public class Punctuation
             // 检查密钥是否有效
             String keyValue = this.key.getValue();
             if (keyValue == null || keyValue.isEmpty()) {
-                System.out.println("Punctuation: 密钥为空");
                 return null;
             }
             
             // 获取密钥
             SecretKeySpec secretKey = Punctuation.getKey(keyValue);
             if (secretKey == null) {
-                System.out.println("Punctuation: 获取密钥失败");
                 return null;
             }
             
@@ -408,24 +371,16 @@ public class Punctuation
             cipher.init(Cipher.DECRYPT_MODE, secretKey, ivParams);
             
             // 解密数据
-            System.out.println("Punctuation: 解密前Base64字符串: " + strToDecrypt);
             byte[] decodedBytes = Base64.getDecoder().decode(strToDecrypt);
-            System.out.println("Punctuation: Base64解码后字节长度: " + decodedBytes.length);
-            
             byte[] original = cipher.doFinal(decodedBytes);
             String decryptedText = new String(original, StandardCharsets.UTF_8);
-            System.out.println("Punctuation: 解密后文本: " + decryptedText);
             
             return decryptedText;
         }
         catch (IllegalArgumentException e) {
-            System.out.println("Punctuation: Base64解码失败: " + strToDecrypt);
-            e.printStackTrace();
             return null;
         }
         catch (Exception e) {
-            System.out.println("Punctuation: 解密异常: " + strToDecrypt + ", 错误: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
@@ -434,16 +389,12 @@ public class Punctuation
         try {
             // 检查输入是否为空
             if (strToEncrypt == null || strToEncrypt.isEmpty()) {
-                System.out.println("Punctuation: 加密输入为空");
                 return null;
             }
-            
-            System.out.println("Punctuation: 加密前文本: " + strToEncrypt);
             
             // 获取密钥
             SecretKeySpec secretKey = Punctuation.getKey(this.key.getValue());
             if (secretKey == null) {
-                System.out.println("Punctuation: 获取密钥失败");
                 return null;
             }
             
@@ -457,13 +408,9 @@ public class Punctuation
             byte[] encryptedBytes = cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8));
             String encryptedBase64 = Base64.getEncoder().encodeToString(encryptedBytes);
             
-            System.out.println("Punctuation: 加密后Base64字符串: " + encryptedBase64);
-            
             return encryptedBase64;
         }
         catch (Exception e) {
-            System.out.println("Punctuation: 加密异常: " + strToEncrypt + ", 错误: " + e.getMessage());
-            e.printStackTrace();
             return null;
         }
     }
