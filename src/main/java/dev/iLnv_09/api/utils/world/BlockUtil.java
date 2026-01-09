@@ -537,4 +537,9 @@ public class BlockUtil implements Wrapper {
 
         return true;
     }
+
+    public static boolean isAir(BlockPos pos) {
+        return mc.world.isAir(pos);
+    }
+
 }

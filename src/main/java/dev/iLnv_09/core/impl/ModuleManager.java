@@ -33,6 +33,8 @@ public class ModuleManager implements Wrapper {
 
     public ModuleManager() {
         addModule(new SkyBox());
+        addModule(new AutoBow());
+        addModule(new AutoRegear());
         addModule(new Punctuation());
         addModule(new KillEffects());
         addModule(new AutoKit());

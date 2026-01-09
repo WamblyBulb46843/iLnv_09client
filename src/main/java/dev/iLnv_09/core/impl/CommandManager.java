@@ -26,6 +26,7 @@ public class CommandManager implements Wrapper {
         registerCommand(new LoadCommand());
         registerCommand(new PingCommand());
         registerCommand(new PrefixCommand());
+        registerCommand(new RegearCommand());
         registerCommand(new RejoinCommand());
         registerCommand(new ReloadCommand());
         registerCommand(new ReloadAllCommand());
