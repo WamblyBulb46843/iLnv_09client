@@ -36,6 +36,7 @@ public class ModuleManager implements Wrapper {
         addModule(new AutoBow());
         addModule(new AutoRegear());
         addModule(new Punctuation());
+        addModule(new BurrowAssist());
         addModule(new KillEffects());
         addModule(new AutoKit());
         addModule(new Notify());

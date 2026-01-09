@@ -9,8 +9,10 @@ import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
+import net.minecraft.util.math.MathHelper;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -20,7 +22,7 @@ public class PlayerManager implements Wrapper {
     public Map<PlayerEntity, EntityAttribute> map = new ConcurrentHashMap<>();
     public CopyOnWriteArrayList<PlayerEntity> inWebPlayers = new CopyOnWriteArrayList<>();
     public boolean insideBlock = false;
-
+    public final HashMap<PlayerEntity, Double> playerSpeeds = new HashMap();
     public void onUpdate() {
         if (Module.nullCheck()) return;
         inWebPlayers.clear();
@@ -30,7 +32,15 @@ public class PlayerManager implements Wrapper {
             webUpdate(player);
         }
     }
-
+    public double getPlayerSpeed(PlayerEntity player) {
+        if (this.playerSpeeds.get((Object)player) == null) {
+            return 0.0;
+        }
+        return this.turnIntoKpH(this.playerSpeeds.get((Object)player));
+    }
+    public double turnIntoKpH(double input) {
+        return (double) MathHelper.sqrt((float)((float)input)) * 71.2729367892;
+    }
     public boolean isInWeb(PlayerEntity player) {
         return inWebPlayers.contains(player);
     }
