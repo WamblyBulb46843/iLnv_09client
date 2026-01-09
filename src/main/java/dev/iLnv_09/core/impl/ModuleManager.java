@@ -35,6 +35,7 @@ public class ModuleManager implements Wrapper {
         addModule(new SkyBox());
         addModule(new Punctuation());
         addModule(new KillEffects());
+        addModule(new AutoKit());
         addModule(new Notify());
         addModule(new AntiPush());
         addModule(new AutoWalk());
