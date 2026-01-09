@@ -29,5 +29,8 @@ public class Render3DEvent extends Event {
     public void drawBox(Box box, Color color) {
         Render3DUtil.drawBox(matrixStack, box, color);
     }
-}
 
+    public void drawFill(Box box, Color color) {
+        Render3DUtil.drawFill(matrixStack, box, color);
+    }
+}
