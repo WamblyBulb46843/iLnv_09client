@@ -9,7 +9,7 @@ import java.io.*;
 import java.util.*;
 
 public class RegearCommand extends Command {
-    private static final File KITS_FILE = new File(System.getProperty("user.dir") + File.separator + "Luminous" + File.separator + "kits.yml");
+    private static final File KITS_FILE = new File(System.getProperty("user.dir") + File.separator + "ilnv_09" + File.separator + "kits.yml");
 
     public RegearCommand() {
         super("regear", "Manage your regear kits");
@@ -271,7 +271,7 @@ public class RegearCommand extends Command {
 
     private void saveKits(Map<String, Object> kits) throws IOException {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(KITS_FILE))) {
-            writer.write("# Luminous Regear Kits");
+            writer.write("# ilnv_09 Regear Kits");
             writer.newLine();
             writer.newLine();
 
