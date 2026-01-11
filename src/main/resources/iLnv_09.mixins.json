@@ -78,6 +78,7 @@
     "mixins.MixinTotemParticle",
     "mixins.MixinWorld",
     "mixins.PlayerListHudMixin",
+    "mixins.EndCrystalEntityRendererMixin",
     "mixins.MixinWorldRenderer"
   ],
   "injectors": {

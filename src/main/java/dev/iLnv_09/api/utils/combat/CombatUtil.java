@@ -7,6 +7,7 @@ import dev.iLnv_09.api.utils.world.BlockPosX;
 import dev.iLnv_09.api.utils.world.BlockUtil;
 import dev.iLnv_09.iLnv_09;
 import dev.iLnv_09.mod.modules.impl.client.AntiCheat;
+import dev.iLnv_09.mod.modules.impl.player.PacketMine;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.entity.Entity;
@@ -145,5 +146,14 @@ public class CombatUtil implements Wrapper {
             if (BlockUtil.isHole(playerPos.offset(dir))) return false;
         }
         return true;
+    }
+
+    public static boolean isMiningBlock(BlockPos pos) {
+        // 这里需要根据你的项目结构实现
+        // 可能是检查PacketMine模块的当前挖掘位置
+        if (PacketMine.INSTANCE != null && PacketMine.getBreakPos() != null) {
+            return PacketMine.getBreakPos().equals(pos);
+        }
+        return false;
     }
 }

@@ -30,6 +30,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 
 import java.awt.*;
+import java.lang.Math;
 
 public class AutoPot extends Module {
     public static AutoPot INSTANCE;
@@ -39,6 +40,12 @@ public class AutoPot extends Module {
     private final BooleanSetting inventory = this.add(new BooleanSetting("InventorySwap", true));
     public final SliderSetting delay = this.add(new SliderSetting("Delay", 1050, 0, 2000));
     private final SliderSetting earlyThrow = this.add(new SliderSetting("EarlyThrow", 3, 1, 10).setSuffix("s"));
+
+    // 新增边缘检测设置
+    private final BooleanSetting edgeCheck = this.add(new BooleanSetting("EdgeCheck", false).setParent());
+    private final SliderSetting edgeDistance = this.add(new SliderSetting("EdgeDistance", 0.3, 0.1, 0.5, 0.05,
+            () -> edgeCheck.getValue()).setSuffix("m"));
+
     private final BooleanSetting checkPlayer = add(new BooleanSetting("PlayerCheck", true).setParent());
     private final SliderSetting range = add(new SliderSetting("Range", 15, 0, 20, checkPlayer::isOpen).setSuffix("m"));
     private final BooleanSetting hcehck = this.add((new BooleanSetting("HealthCheck", false)).setParent());
@@ -86,6 +93,10 @@ public class AutoPot extends Module {
         if (resistance.getValue() && (resistanceEffect == null || resistanceEffect.getDuration() < earlyThrowTicks || resistanceEffect.getAmplifier() < 2)) {
             if (!hcehck.getValue() || (mc.player.getHealth() + mc.player.getAbsorptionAmount()) < health.getValue()) {
                 if (findPot(StatusEffects.RESISTANCE) != -1) {
+                    // 添加边缘检测
+                    if (edgeCheck.getValue() && isPlayerOnEdge()) {
+                        return;
+                    }
                     this.doPot(StatusEffects.RESISTANCE);
                     return;
                 }
@@ -94,6 +105,10 @@ public class AutoPot extends Module {
             StatusEffectInstance speedEffect = mc.player.getStatusEffect(StatusEffects.SPEED);
             if (speed.getValue() && (speedEffect == null || speedEffect.getDuration() < earlyThrowTicks)) {
                 if (findPot(StatusEffects.SPEED) != -1) {
+                    // 添加边缘检测
+                    if (edgeCheck.getValue() && isPlayerOnEdge()) {
+                        return;
+                    }
                     this.doPot(StatusEffects.SPEED);
                     return;
                 }
@@ -101,6 +116,10 @@ public class AutoPot extends Module {
                 StatusEffectInstance slowFallingEffect = mc.player.getStatusEffect(StatusEffects.SLOW_FALLING);
                 if (slowFalling.getValue() && (slowFallingEffect == null || slowFallingEffect.getDuration() < earlyThrowTicks)) {
                     if (findPot(StatusEffects.SLOW_FALLING) != -1) {
+                        // 添加边缘检测
+                        if (edgeCheck.getValue() && isPlayerOnEdge()) {
+                            return;
+                        }
                         this.doPot(StatusEffects.SLOW_FALLING);
                     }
                 }
@@ -124,7 +143,50 @@ public class AutoPot extends Module {
             return false;
         }
 
+        // 添加边缘检测
+        if (edgeCheck.getValue() && isPlayerOnEdge()) {
+            return false;
+        }
+
         return this.timer.passedMs((long) this.delay.getValueInt());
+    }
+
+    /**
+     * 检测玩家是否站在方块边缘
+     */
+    private boolean isPlayerOnEdge() {
+        if (mc.player == null || mc.world == null) return false;
+
+        Vec3d playerPos = mc.player.getPos();
+        double playerX = playerPos.x;
+        double playerY = playerPos.y;
+        double playerZ = playerPos.z;
+
+        // 获取玩家脚下的方块位置
+        BlockPos blockPos = new BlockPos(
+                (int) Math.floor(playerX),
+                (int) Math.floor(playerY - 0.5), // 减去0.5以获得脚下的方块
+                (int) Math.floor(playerZ)
+        );
+
+        // 检查玩家是否站在一个实体方块上
+        if (mc.world.getBlockState(blockPos).getBlock() == Blocks.AIR) {
+            return true; // 如果没有方块支撑，也认为是边缘
+        }
+
+        // 获取玩家脚部相对于方块的位置（0-1）
+        double offsetX = playerX - blockPos.getX();
+        double offsetZ = playerZ - blockPos.getZ();
+
+        // 获取配置的边缘距离阈值
+        double edgeThreshold = edgeDistance.getValue();
+
+        // 检查是否接近任何边缘
+        boolean nearXEdge = offsetX < edgeThreshold || offsetX > (1.0 - edgeThreshold);
+        boolean nearZEdge = offsetZ < edgeThreshold || offsetZ > (1.0 - edgeThreshold);
+
+        // 如果玩家接近任何一个边缘，返回true
+        return nearXEdge || nearZEdge;
     }
 
     @Override

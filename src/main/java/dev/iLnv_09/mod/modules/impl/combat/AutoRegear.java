@@ -94,7 +94,7 @@ public class AutoRegear extends Module {
     }};
 
     // ==================== 配置文件路径 ====================
-    private static final File KITS_FILE = new File(System.getProperty("user.dir") + File.separator + "Luminous" + File.separator + "kits.yml");
+    private static final File KITS_FILE = new File(System.getProperty("user.dir") + File.separator + "iLnv_09" + File.separator + "kits.yml");
 
     public AutoRegear() {
         super("AutoRegear", "Auto regear from shulker boxes", Category.Combat);
