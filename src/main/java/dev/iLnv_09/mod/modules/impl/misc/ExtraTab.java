@@ -14,8 +14,6 @@ import net.minecraft.util.Formatting;
 import net.minecraft.world.GameMode;
 
 import java.awt.*;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
 
 public class ExtraTab extends Module {
     public ExtraTab() {
@@ -32,6 +30,7 @@ public class ExtraTab extends Module {
     private final BooleanSetting self = add(new BooleanSetting("Self", true));
     private final ColorSetting selfColor = add(new ColorSetting("SelfColor", new Color(255, 255, 255, 100), self::getValue));
     private final BooleanSetting friends = add(new BooleanSetting("Friends", true));
+    private final ColorSetting friendColor = add(new ColorSetting("FriendColor", new Color(0, 255, 0), friends::getValue));
     private final BooleanSetting gamemode = add(new BooleanSetting("GameMode", true));
     private final BooleanSetting pingColor = add(new BooleanSetting("PingColor", true));
     private final BooleanSetting health = add(new BooleanSetting("Health", true));
@@ -40,29 +39,31 @@ public class ExtraTab extends Module {
     public static ExtraTab INSTANCE;
 
     public Text getPlayerName(PlayerListEntry playerListEntry) {
-        // 1. Get base name
         Text baseName = playerListEntry.getDisplayName();
         if (baseName == null) {
             baseName = Text.literal(playerListEntry.getProfile().getName());
         }
 
-        // 2. Determine color for the name
         TextColor finalColor = null;
-        if (friends.getValue() && iLnv_09.FRIEND != null && iLnv_09.FRIEND.isFriend(playerListEntry.getProfile().getName())) {
-            finalColor = TextColor.fromRgb(new Color(0, 255, 0).getRGB());
-        } else if (playerListEntry.getProfile().getId().equals(mc.player.getGameProfile().getId()) && self.getValue()) {
+        // 首先检查是否是自己（优先于Friend渲染）
+        if (playerListEntry.getProfile().getId().equals(mc.player.getGameProfile().getId()) && self.getValue()) {
             finalColor = TextColor.fromRgb(selfColor.getValue().getRGB());
-        } else if (pingColor.getValue()) {
+        }
+        // 然后检查是否是好友（排除自己）
+        else if (friends.getValue() && iLnv_09.FRIEND != null && iLnv_09.FRIEND.isFriend(playerListEntry.getProfile().getName())) {
+            finalColor = TextColor.fromRgb(friendColor.getValue().getRGB());
+        }
+        // 最后使用ping颜色
+        else if (pingColor.getValue()) {
             int latency = playerListEntry.getLatency();
             Color c;
-            if (latency < 0) c = new Color(170, 170, 170); // Gray for unknown/loading
-            else if (latency < 150) c = new Color(0, 255, 0); // Green for good
-            else if (latency < 300) c = new Color(255, 255, 0); // Yellow for medium
-            else c = new Color(255, 0, 0); // Red for bad
+            if (latency < 0) c = new Color(170, 170, 170);
+            else if (latency < 150) c = new Color(0, 255, 0);
+            else if (latency < 300) c = new Color(255, 255, 0);
+            else c = new Color(255, 0, 0);
             finalColor = TextColor.fromRgb(c.getRGB());
         }
 
-        // 3. Create the final name component with color, stripping old format
         String nameString = baseName.getString();
         for (Formatting format : Formatting.values()) {
             if (format.isColor()) {
@@ -76,10 +77,8 @@ public class ExtraTab extends Module {
             finalDisplayName.setStyle(baseName.getStyle());
         }
 
-        // 4. Create and append suffix (GameMode, Health)
         MutableText suffix = Text.literal("");
 
-        // Append GameMode
         if (gamemode.getValue()) {
             GameMode gm = playerListEntry.getGameMode();
             if (gm != null) {
@@ -93,10 +92,8 @@ public class ExtraTab extends Module {
             }
         }
 
-        // Append Health
         if (health.getValue()) {
             PlayerEntity playerEntity = mc.world.getPlayerByUuid(playerListEntry.getProfile().getId());
-            // Only show health for other players that are loaded in the world
             if (playerEntity != null && !playerEntity.getUuid().equals(mc.player.getUuid())) {
                 float hp = playerEntity.getHealth() + playerEntity.getAbsorptionAmount();
 
