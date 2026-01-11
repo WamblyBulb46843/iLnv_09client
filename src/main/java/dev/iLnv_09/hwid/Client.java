@@ -6,14 +6,10 @@ import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.io.*;
 import java.net.Socket;
-import java.util.Timer;
-import java.util.TimerTask;
-
 
 public class Client {
     PrintWriter writer;
     Socket socket;
-
     public void connect() {
         try {
             socket = new Socket("59.110.167.55", 5233);
@@ -33,10 +29,9 @@ public class Client {
             String response = reader.readLine();
             System.out.println("Return: " + response);
 
-            if (response != null && response.startsWith("SUCCESS:")) {
-                String token = response.substring("SUCCESS:".length());
+            if (response != null && "SUCCESS".equals(response)) {
                 System.out.println("验证成功，正在启动应用程序...");
-                launchApplication(token);
+                // 验证成功，继续执行
             } else {
                 // Handle failure: either explicit FAIL or malformed response
                 String reason = "未知错误";
@@ -59,46 +54,6 @@ public class Client {
             }
         }
     }
-
-    private void launchApplication(String token) {
-        startHeartbeat(token);
-    }
-
-    private void startHeartbeat(String token) {
-        String hwid = HWID.getHWID();
-        Timer timer = new Timer("HeartbeatTimer", true); // Run as a daemon thread
-
-        timer.schedule(new TimerTask() {
-            @Override
-            public void run() {
-                System.out.println("执行心跳验证...");
-                try {
-                    // Create a new connection for each heartbeat to ensure robustness
-                    try (Socket heartbeatSocket = new Socket("59.110.167.55", 5233);
-                         PrintWriter writer = new PrintWriter(new OutputStreamWriter(heartbeatSocket.getOutputStream(), "UTF-8"), true);
-                         BufferedReader reader = new BufferedReader(new InputStreamReader(heartbeatSocket.getInputStream()))) {
-
-                        String request = "HEARTBEAT:" + hwid + ":" + token;
-                        writer.println(request);
-
-                        String response = reader.readLine();
-                        if (!"OK".equals(response)) {
-                            System.err.println("心跳验证失败。响应: " + response + ". 正在终止应用程序。");
-                            JOptionPane.showMessageDialog(null, "会话已失效，应用程序将关闭。", "验证错误", JOptionPane.ERROR_MESSAGE);
-                            System.exit(0);
-                        } else {
-                            System.out.println("心跳验证成功。");
-                        }
-                    }
-                } catch (Exception e) {
-                    System.err.println("心跳检查期间发生错误: " + e.getMessage() + ". 正在终止应用程序。");
-                    JOptionPane.showMessageDialog(null, "无法连接到验证服务器，应用程序将关闭。", "连接错误", JOptionPane.ERROR_MESSAGE);
-                    System.exit(0);
-                }
-            }
-        }, 30 * 60 * 1000, 30 * 60 * 1000); // Start after 30 minutes, then repeat every 30 minutes
-    }
-
 
     private void showVerificationFailed(String reason) {
         String hwid = HWID.getHWID();

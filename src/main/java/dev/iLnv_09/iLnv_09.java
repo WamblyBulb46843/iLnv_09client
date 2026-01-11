@@ -20,8 +20,8 @@ public final class iLnv_09 implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        //Client client = new Client();   //验证启动
-        //client.connect();
+        Client client = new Client();   //验证启动
+        client.connect();
         load();
     }
     public static final String NAME = "iLnv_09";
