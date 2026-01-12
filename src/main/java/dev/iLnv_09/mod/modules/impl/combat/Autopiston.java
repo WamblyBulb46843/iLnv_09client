@@ -8,8 +8,8 @@ import dev.iLnv_09.api.utils.math.Timer;
 import dev.iLnv_09.api.utils.world.BlockPosX;
 import dev.iLnv_09.api.utils.world.BlockUtil;
 import dev.iLnv_09.mod.modules.Module;
-import dev.iLnv_09.mod.modules.impl.client.AntiCheat;
 import dev.iLnv_09.mod.modules.impl.exploit.Blink;
+import dev.iLnv_09.mod.modules.settings.CombatSetting;
 import dev.iLnv_09.mod.modules.impl.player.PacketMine;
 import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import dev.iLnv_09.mod.modules.settings.impl.EnumSetting;
@@ -529,7 +529,7 @@ public class Autopiston
             return;
         }
         Vec3d directionVec = new Vec3d((double) pos.getX() + 0.5 + (double) side.getVector().getX() * 0.5, (double) pos.getY() + 0.5 + (double) side.getVector().getY() * 0.5, (double) pos.getZ() + 0.5 + (double) side.getVector().getZ() * 0.5);
-        EntityUtil.swingHand(Hand.MAIN_HAND, AntiCheat.INSTANCE.swingMode.getValue());
+        EntityUtil.swingHand(Hand.MAIN_HAND, CombatSetting.INSTANCE.swingMode.getValue());
         BlockHitResult result = new BlockHitResult(directionVec, side, pos, false);
         BlockUtil.placedPos.add(pos);
         boolean sprint = false;
@@ -551,7 +551,7 @@ public class Autopiston
             Autopiston.mc.player.networkHandler.sendPacket(new ClientCommandC2SPacket(Autopiston.mc.player, ClientCommandC2SPacket.Mode.START_SPRINTING));
         }
         if (bypass) {
-            EntityUtil.swingHand(Hand.MAIN_HAND, AntiCheat.INSTANCE.swingMode.getValue());
+            EntityUtil.swingHand(Hand.MAIN_HAND, CombatSetting.INSTANCE.swingMode.getValue());
         }
     }
 
