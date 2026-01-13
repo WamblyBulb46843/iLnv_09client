@@ -16,6 +16,7 @@ import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import dev.iLnv_09.mod.modules.settings.impl.ColorSetting;
 import dev.iLnv_09.mod.modules.settings.impl.SliderSetting;
 import dev.iLnv_09.mod.modules.settings.impl.StringSetting;
+import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.util.math.MatrixStack;
@@ -46,7 +47,6 @@ import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
-
 public class Punctuation
         extends Module {
     private final BooleanSetting sound = this.add(new BooleanSetting("Sound", true));
@@ -54,6 +54,7 @@ public class Punctuation
     private final ColorSetting color = this.add(new ColorSetting("Color", new Color(255, 255, 255, 100)));
     private final BindSetting enemySpot = this.add(new BindSetting("EnemySpot", -1));
     private final StringSetting key = this.add(new StringSetting("EncryptKey", "IDKWTFTHIS"));
+    private final BooleanSetting useIRC = this.add(new BooleanSetting("UseIRC", false));
     private final ConcurrentHashMap<String, Spot> waypoint = new ConcurrentHashMap();
     private boolean pressed = false;
 
@@ -81,6 +82,24 @@ public class Punctuation
         }
     }
 
+    // 静态方法，供IRCModule调用处理IRC消息
+    public static void handleIRCMessage(String message) {
+        // 通过模块管理器获取Punctuation实例
+        Module module = dev.iLnv_09.iLnv_09.MODULE.getModuleByName("Punctuation");
+        if (module instanceof Punctuation) {
+            ((Punctuation) module).receive(message);
+        }
+    }
+    
+    // 静态方法，供IRCModule调用处理带有发送者信息的IRC消息
+    public static void handleIRCMessageWithSender(String message, String sender) {
+        // 通过模块管理器获取Punctuation实例
+        Module module = dev.iLnv_09.iLnv_09.MODULE.getModuleByName("Punctuation");
+        if (module instanceof Punctuation) {
+            ((Punctuation) module).receiveWithSender(message, sender);
+        }
+    }
+
     @Override
     public void onDisable() {
         this.waypoint.clear();
@@ -94,7 +113,21 @@ public class Punctuation
             if (!this.pressed && (hitResult = mc.player.raycast(256.0, 0.0f, false)) instanceof BlockHitResult) {
                 BlockHitResult blockHitResult = (BlockHitResult)hitResult;
                 BlockPos pos = blockHitResult.getBlockPos();
-                Punctuation.mc.player.networkHandler.sendChatMessage(this.Encrypt("EnemyHere{" + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + this.color.getValue().getRGB() + "}"));
+                String encryptedMessage = this.Encrypt("EnemyHere{" + pos.getX() + "," + pos.getY() + "," + pos.getZ() + "," + this.color.getValue().getRGB() + "}");
+                
+                if (this.useIRC.getValue()) {
+                    // 通过IRC发送加密消息，格式为 "[PUNCTUATION]encryptedMessage"
+                    if (dev.iLnv_09.api.utils.world.IRCUtil.isIRCConnected()) {
+                        String prefixedMessage = "[PUNCTUATION]" + encryptedMessage;
+                        dev.iLnv_09.api.utils.world.IRCUtil.sendIRCMessage(prefixedMessage);
+                        CommandManager.sendChatMessage("[Punctuation] Enemy position sent via IRC");
+                    } else {
+                        CommandManager.sendChatMessage("[Punctuation] IRC not connected, unable to send message");
+                    }
+                } else {
+                    // 通过游戏聊天发送加密消息
+                    Punctuation.mc.player.networkHandler.sendChatMessage(encryptedMessage);
+                }
             }
             this.pressed = true;
         } else {
@@ -233,6 +266,14 @@ public class Punctuation
 
     private void receive(String s) {
         try {
+            this.receiveWithSender(s, "Unknown");
+        } catch (Exception e) {
+            // 接收消息异常处理
+        }
+    }
+    
+    private void receiveWithSender(String s, String senderName) {
+        try {
             Pattern pattern;
             Matcher matcher;
             if (s == null) {
@@ -281,7 +322,10 @@ public class Punctuation
                             return;
                         }
                         double z = Double.parseDouble(zString);
-                        if (matcher.find()) {
+                        if (!"Unknown".equals(senderName)) {
+                            this.waypoint.put(senderName, new Spot(senderName, new BlockPosX(x, y, z), this.color.getValue(), new Timer()));
+                            CommandManager.sendChatMessage(senderName + " marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
+                        } else if (matcher.find()) {
                             String sender = matcher.group(1);
                             this.waypoint.put(sender, new Spot(sender, new BlockPosX(x, y, z), this.color.getValue(), new Timer()));
                             CommandManager.sendChatMessage(sender + " marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
@@ -319,7 +363,10 @@ public class Punctuation
                             return;
                         }
                         double color = Double.parseDouble(colorString);
-                        if (matcher.find()) {
+                        if (!"Unknown".equals(senderName)) {
+                            this.waypoint.put(senderName, new Spot(senderName, new BlockPosX(x, y, z), new Color((int)color, true), new Timer()));
+                            CommandManager.sendChatMessage(senderName + " marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");
+                        } else if (matcher.find()) {
                             String sender = matcher.group(1);
                             this.waypoint.put(sender, new Spot(sender, new BlockPosX(x, y, z), new Color((int)color, true), new Timer()));
                             CommandManager.sendChatMessage(sender + " marked at \u00a7r(" + xString + ", " + yString + ", " + zString + ")");

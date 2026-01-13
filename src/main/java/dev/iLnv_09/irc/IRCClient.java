@@ -46,12 +46,19 @@ public class IRCClient {
                     if (message.equals("GET_USERS_REQUEST")) {
                         sendAllUsers(); // 发送所有用户
                     } else {
-                        String[] parts = message.split(":");
+                        // 检查消息格式，如果是 "username:some_ign" 这种格式，且some_ign看起来像游戏用户名，则认为是用户映射消息
+                        String[] parts = message.split(":", 2); // 最多分割为2部分
                         if (parts.length == 2) {
                             String usernameReceived = parts[0];
-                            String ignReceived = parts[1];
-                            userToIGNMap.put(usernameReceived, ignReceived);  // 保存映射关系
+                            String potentialIgn = parts[1];
+                            
+                            // 简单判断：如果第二部分较短（如16字符以内）且看起来像用户名，则认为是映射消息
+                            if (potentialIgn.length() <= 16 && isValidUserName(potentialIgn)) {
+                                userToIGNMap.put(usernameReceived, potentialIgn);  // 保存映射关系
+                            }
                         }
+                        
+                        // 无论如何都要处理消息
                         handler.onMessage(message);
                     }
                 }
@@ -63,6 +70,11 @@ public class IRCClient {
                 close();
             }
         }).start();  // 启动新线程
+    }
+
+    // 简单判断是否为有效的用户名（字母数字下划线，长度合理）
+    private boolean isValidUserName(String name) {
+        return name != null && name.matches("^[a-zA-Z0-9_]{2,16}$");
     }
 
     // 获取所有用户与IGN映射
