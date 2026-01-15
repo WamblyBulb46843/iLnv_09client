@@ -358,7 +358,7 @@ public class FontRenderer implements Closeable {
 
     @Contract(value = "-> new", pure = true)
     public static @NotNull Identifier randomIdentifier() {
-        return new Identifier("iLnv_09", "temp/" + randomString(32));
+        return new Identifier("ilnv_09", "temp/" + randomString(32).toLowerCase().replaceAll("[^a-z0-9_.-]", ""));
     }
 
     private static String randomString(int length) {

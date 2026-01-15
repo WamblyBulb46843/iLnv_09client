@@ -13,6 +13,7 @@ import dev.iLnv_09.api.utils.world.BlockUtil;
 import dev.iLnv_09.mod.modules.Module;
 import dev.iLnv_09.mod.modules.impl.client.AntiCheat;
 import dev.iLnv_09.mod.modules.impl.exploit.Blink;
+import dev.iLnv_09.mod.modules.impl.combat.AutoCrystalBase;
 import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import dev.iLnv_09.mod.modules.settings.impl.EnumSetting;
 import dev.iLnv_09.mod.modules.settings.impl.SliderSetting;
@@ -95,8 +96,8 @@ public class AutoWeb extends Module {
         if (!crystalSync.getValue() || !AutoCrystal.INSTANCE.isOff()) return false;
 
         // 检查目标是否在自动水晶的范围内
-        if (AutoCrystal.crystalPos != null && AutoCrystal.INSTANCE.displayTarget == target) {
-            double distance = target.getPos().distanceTo(AutoCrystal.crystalPos.toCenterPos());
+        if (AutoCrystalBase.crystalPos != null && AutoCrystal.INSTANCE.displayTarget == target) {
+            double distance = target.getPos().distanceTo(AutoCrystalBase.crystalPos.toCenterPos());
             return distance <= syncDistance.getValue();
         }
 

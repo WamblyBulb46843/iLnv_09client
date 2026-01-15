@@ -11,6 +11,7 @@ import dev.iLnv_09.mod.modules.Module;
 import dev.iLnv_09.mod.modules.impl.exploit.Blink;
 import dev.iLnv_09.mod.modules.settings.CombatSetting;
 import dev.iLnv_09.mod.modules.impl.player.PacketMine;
+import dev.iLnv_09.mod.modules.impl.combat.AutoCrystalBase;
 import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import dev.iLnv_09.mod.modules.settings.impl.EnumSetting;
 import dev.iLnv_09.mod.modules.settings.impl.SliderSetting;
@@ -129,7 +130,7 @@ public class Autopiston
         if (this.cancelBlink.getValue() && Blink.INSTANCE.isOn()) {
             return;
         }
-        if (this.syncCrystal.getValue() && AutoCrystal.crystalPos != null) {
+        if (this.syncCrystal.getValue() && AutoCrystalBase.crystalPos != null) {
             return;
         }
         if (this.syncweb.getValue() && AutoWeb.INSTANCE.pos == null) {

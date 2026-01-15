@@ -22,6 +22,7 @@ import dev.iLnv_09.mod.modules.impl.client.ClientSetting;
 import dev.iLnv_09.mod.modules.impl.combat.AutoAnchor;
 import dev.iLnv_09.mod.modules.impl.combat.AutoCev;
 import dev.iLnv_09.mod.modules.impl.combat.AutoCrystal;
+import dev.iLnv_09.mod.modules.impl.combat.AutoCrystalBase;
 import dev.iLnv_09.mod.modules.settings.SwingSide;
 import dev.iLnv_09.mod.modules.settings.impl.*;
 import net.minecraft.block.Block;
@@ -409,8 +410,8 @@ private int originalSlot = -1; // 记录原始槽位
 		}
 		if (waitPlace.getValue()) {
 			for (Direction i : Direction.values()) {
-				if (breakPos.offset(i).equals(AutoCrystal.crystalPos)) {
-					if (AutoCrystal.INSTANCE.canPlaceCrystal(AutoCrystal.crystalPos, false, false)) {
+				if (breakPos.offset(i).equals(AutoCrystalBase.crystalPos)) {
+					if (AutoCrystal.INSTANCE.canPlaceCrystal(AutoCrystalBase.crystalPos, false, false)) {
 						return;
 					}
 					break;

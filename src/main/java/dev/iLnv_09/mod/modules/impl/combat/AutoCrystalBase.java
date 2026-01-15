@@ -202,7 +202,7 @@ public class AutoCrystalBase extends Module {
             tempPos = null;
             return;
         }
-        if (breakOnlyHasCrystal.getValue() && !mc.player.getMainHandStack().getItem().equals(Items.END_CRYSTAL) && !mc.player.getOffHandStack().getItem().equals(Items.END_CRYSTAL) && !AutoCrystal.INSTANCE.findCrystal()) {
+        if (breakOnlyHasCrystal.getValue() && !mc.player.getMainHandStack().getItem().equals(Items.END_CRYSTAL) && !mc.player.getOffHandStack().getItem().equals(Items.END_CRYSTAL) && !AutoCrystal.INSTANCE.hasCrystal()) {
             tempPos = null;
             return;
         }

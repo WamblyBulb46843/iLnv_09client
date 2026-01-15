@@ -15,7 +15,7 @@ import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 
 public final class iLnv_09 implements ModInitializer {
-    public static final Identifier CUSTOM_SOUND_ID = new Identifier("ilnv_09", "custom_sound");
+    public static final Identifier CUSTOM_SOUND_ID = new Identifier("ilnv09", "custom_sound");
     public static SoundEvent CUSTOM_SOUND_EVENT = SoundEvent.of(CUSTOM_SOUND_ID);
 
     @Override
@@ -72,6 +72,13 @@ public final class iLnv_09 implements ModInitializer {
         SHADER = new ShaderManager();
         FPS = new FPSManager();
         SERVER = new ServerManager();
+        
+        // 确保所有管理器都已初始化，避免空指针异常
+        if (ROTATION == null) {
+            System.err.println("[iLnv_09] Warning: RotationManager initialization failed!");
+            ROTATION = new RotationManager();
+        }
+        
         CONFIG.loadSettings();
         System.out.println("[" + iLnv_09.NAME + "] loaded");
 
