@@ -62,7 +62,7 @@ public class Autopiston
 
     public Autopiston() {
         super("Autopiston", Category.Combat);
-        setChinese("HightIQ活塞");
+        setChinese("自动活塞");
         INSTANCE = this;
     }
 
