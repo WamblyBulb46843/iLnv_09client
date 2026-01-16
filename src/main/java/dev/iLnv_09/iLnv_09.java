@@ -2,15 +2,13 @@ package dev.iLnv_09;
 
 import dev.iLnv_09.api.events.eventbus.EventBus;
 import dev.iLnv_09.core.impl.*;
-import dev.iLnv_09.hwid.Client;
+import dev.iLnv_09.hwid.HWIDClient;
 import net.fabricmc.api.ModInitializer;
 
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.Registry;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.util.Identifier;
 
@@ -20,8 +18,8 @@ public final class iLnv_09 implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        //Client client = new Client();   //验证启动
-        //client.connect();
+        HWIDClient HWIDClient = new HWIDClient();   //验证启动
+        HWIDClient.connect();
         load();
     }
     public static final String NAME = "iLnv_09";

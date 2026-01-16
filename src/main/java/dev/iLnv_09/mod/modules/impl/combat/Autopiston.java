@@ -11,7 +11,6 @@ import dev.iLnv_09.mod.modules.Module;
 import dev.iLnv_09.mod.modules.impl.exploit.Blink;
 import dev.iLnv_09.mod.modules.settings.CombatSetting;
 import dev.iLnv_09.mod.modules.impl.player.PacketMine;
-import dev.iLnv_09.mod.modules.impl.combat.AutoCrystalBase;
 import dev.iLnv_09.mod.modules.settings.impl.BooleanSetting;
 import dev.iLnv_09.mod.modules.settings.impl.EnumSetting;
 import dev.iLnv_09.mod.modules.settings.impl.SliderSetting;
@@ -63,7 +62,7 @@ public class Autopiston
 
     public Autopiston() {
         super("Autopiston", Category.Combat);
-        setChinese("自动活塞");
+        setChinese("HightIQ活塞");
         INSTANCE = this;
     }
 
@@ -130,7 +129,7 @@ public class Autopiston
         if (this.cancelBlink.getValue() && Blink.INSTANCE.isOn()) {
             return;
         }
-        if (this.syncCrystal.getValue() && AutoCrystalBase.crystalPos != null) {
+        if (this.syncCrystal.getValue() && AutoCrystal.INSTANCE.crystalPos != null) {
             return;
         }
         if (this.syncweb.getValue() && AutoWeb.INSTANCE.pos == null) {
@@ -554,6 +553,10 @@ public class Autopiston
         if (bypass) {
             EntityUtil.swingHand(Hand.MAIN_HAND, CombatSetting.INSTANCE.swingMode.getValue());
         }
+    }
+
+    public BooleanSetting getPreferAnchor() {
+        return preferAnchor;
     }
 
     /*
