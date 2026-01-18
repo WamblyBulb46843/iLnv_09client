@@ -9,3 +9,4 @@ run
 /iLnv_09混淆/ZKM 21.0.0/ZKM混淆依赖
 *.exe
 /iLnv_09混淆
+*.log

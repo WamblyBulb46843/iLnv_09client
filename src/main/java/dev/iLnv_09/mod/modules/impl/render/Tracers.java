@@ -4,6 +4,7 @@ import dev.iLnv_09.api.utils.render.Render3DUtil;
 import dev.iLnv_09.api.utils.world.BlockUtil;
 import dev.iLnv_09.mod.modules.Module;
 import dev.iLnv_09.mod.modules.settings.impl.ColorSetting;
+import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;
 import net.minecraft.block.entity.EnderChestBlockEntity;
@@ -12,6 +13,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
 import java.awt.*;
@@ -23,6 +25,7 @@ public class Tracers extends Module {
 	private final ColorSetting chest = add(new ColorSetting("Chest", new Color(255, 255, 255, 100)).injectBoolean(false));
 	private final ColorSetting enderChest = add(new ColorSetting("EnderChest", new Color(255, 100, 255, 100)).injectBoolean(false));
 	private final ColorSetting shulkerBox = add(new ColorSetting("ShulkerBox", new Color(15, 255, 255, 100)).injectBoolean(false));
+	private final ColorSetting endPortalFrame = add(new ColorSetting("EndPortalFrame", new Color(255, 165, 0, 100)).injectBoolean(false));
 	public Tracers() {
 		super("Tracers", Category.Render);
 		setChinese("追踪者");
@@ -49,6 +52,14 @@ public class Tracers extends Module {
 				drawLine(blockEntity.getPos().toCenterPos(), enderChest.getValue());
 			} else if (blockEntity instanceof ShulkerBoxBlockEntity && shulkerBox.booleanValue) {
 				drawLine(blockEntity.getPos().toCenterPos(), shulkerBox.getValue());
+			}
+		}
+		
+		if (endPortalFrame.booleanValue) {
+			for (BlockPos pos : BlockUtil.getSphere(100)) {
+				if (mc.world.getBlockState(pos).getBlock() == Blocks.END_PORTAL_FRAME) {
+					drawLine(pos.toCenterPos(), endPortalFrame.getValue());
+				}
 			}
 		}
 		mc.options.getBobView().setValue(prev_bob);

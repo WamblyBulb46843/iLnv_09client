@@ -2,6 +2,7 @@ package cn.langya;
 
 import java.io.*;
 import java.net.*;
+import java.util.Base64;
 
 /**
  * @author LangYa466
@@ -29,7 +30,17 @@ public class ClientHandler implements Runnable {
 
             String message;
             while ((message = in.readLine()) != null) {
-                Logger.info("接受到客户端({})消息: {}", clientSocket.getInetAddress(), message);
+                // 尝试解密Base64消息
+                String decryptedMessage = message;
+                try {
+                    // 尝试Base64解密
+                    byte[] decodedBytes = Base64.getDecoder().decode(message);
+                    decryptedMessage = new String(decodedBytes, "UTF-8");
+                    Logger.info("接受到客户端({})消息: {} (解密后: {})", clientSocket.getInetAddress(), message, decryptedMessage);
+                } catch (IllegalArgumentException e) {
+                    // 如果不是有效的Base64，直接显示原始消息
+                    Logger.info("接受到客户端({})消息: {}", clientSocket.getInetAddress(), message);
+                }
 
                 // 假设客户端发送的第一个消息为"username:IGN"，进行用户名和IGN的映射
                 if (username == null && ign == null) {
