@@ -10,3 +10,5 @@ run
 *.exe
 /iLnv_09混淆
 *.log
+ircserver/target/langya.log
+*.log
